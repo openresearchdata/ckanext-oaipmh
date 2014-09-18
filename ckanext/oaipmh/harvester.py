@@ -33,9 +33,9 @@ class OaipmhHarvester(HarvesterBase):
         Return information about this harvester.
         '''
         return {
-                'name': 'FORS Nesstar',
-                'title': 'FORS Nesstar',
-                'description': 'Harvester for Nesstar OAI-PMH'
+                'name': 'OAI-PMH',
+                'title': 'OAI-PMH',
+                'description': 'Harvester for OAI-PMH data sources'
                 }
 
     def gather_stage(self, harvest_job):
