@@ -33,10 +33,10 @@ class OaipmhHarvester(HarvesterBase):
         Return information about this harvester.
         '''
         return {
-                'name': 'OAI-PMH',
-                'title': 'OAI-PMH',
-                'description': 'Harvester for OAI-PMH data sources'
-                }
+            'name': 'OAI-PMH',
+            'title': 'OAI-PMH',
+            'description': 'Harvester for OAI-PMH data sources'
+        }
 
     def gather_stage(self, harvest_job):
         '''
@@ -69,7 +69,7 @@ class OaipmhHarvester(HarvesterBase):
         if not group:
             group = Group(name=domain, description=domain)
         query = config.get('ckan.oaipmh.query', '')
-        log.debug('The OAI-PMH query paramater is: %s', query)
+        log.debug('The OAI-PMH query parameter is: %s', query)
         try:
             for set in client.listSets():
                 identifier, name, _ = set
