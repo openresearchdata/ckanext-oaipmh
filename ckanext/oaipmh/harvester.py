@@ -27,6 +27,9 @@ class OaipmhHarvester(HarvesterBase):
     '''
     OAI-PMH Harvester
     '''
+    
+    USERNAME = config['oaipmh.username']
+    PASSWORD = config['oaipmh.password']
 
     def info(self):
         '''
@@ -57,7 +60,8 @@ class OaipmhHarvester(HarvesterBase):
         harvest_objs = []
         registry = MetadataRegistry()
         registry.registerReader('oai_dc', oai_dc_reader)
-        client = oaipmh.client.Client(harvest_job.source.url, registry)
+        credentials = (self.USERNAME, self.PASSWORD)
+        client = oaipmh.client.Client(harvest_job.source.url, registry, credentials)
         try:
             identifier = client.identify()
         except urllib2.URLError:
