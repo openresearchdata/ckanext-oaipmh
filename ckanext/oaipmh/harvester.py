@@ -30,7 +30,7 @@ class OaipmhHarvester(HarvesterBase):
     
     USERNAME = config['oaipmh.username']
     PASSWORD = config['oaipmh.password']
-    credentials = (self.USERNAME, self.PASSWORD)
+    credentials = (USERNAME, PASSWORD)
 
     def info(self):
         '''
