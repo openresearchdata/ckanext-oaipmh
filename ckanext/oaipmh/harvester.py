@@ -30,6 +30,7 @@ class OaipmhHarvester(HarvesterBase):
     
     USERNAME = config['oaipmh.username']
     PASSWORD = config['oaipmh.password']
+    credentials = (self.USERNAME, self.PASSWORD)
 
     def info(self):
         '''
@@ -60,8 +61,7 @@ class OaipmhHarvester(HarvesterBase):
         harvest_objs = []
         registry = MetadataRegistry()
         registry.registerReader('oai_dc', oai_dc_reader)
-        credentials = (self.USERNAME, self.PASSWORD)
-        client = oaipmh.client.Client(harvest_job.source.url, registry, credentials)
+        client = oaipmh.client.Client(harvest_job.source.url, registry, self.credentials)
         try:
             identifier = client.identify()
         except urllib2.URLError:
@@ -117,7 +117,7 @@ class OaipmhHarvester(HarvesterBase):
         sets = json.loads(harvest_object.content)
         registry = MetadataRegistry()
         registry.registerReader('oai_dc', oai_dc_reader)
-        client = oaipmh.client.Client(harvest_object.job.source.url, registry)
+        client = oaipmh.client.Client(harvest_object.job.source.url, registry, self.credentials)
         records = []
         recs = []
         try:
