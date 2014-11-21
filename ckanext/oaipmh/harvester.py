@@ -28,7 +28,7 @@ class OaipmhHarvester(HarvesterBase):
     OAI-PMH Harvester
     '''
     
-    credentials = ('', '')
+    credentials = None
     
     def info(self):
         '''
