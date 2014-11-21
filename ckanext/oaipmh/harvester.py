@@ -28,10 +28,8 @@ class OaipmhHarvester(HarvesterBase):
     OAI-PMH Harvester
     '''
     
-    USERNAME = config['oaipmh.username']
-    PASSWORD = config['oaipmh.password']
-    credentials = (USERNAME, PASSWORD)
-
+    credentials = ('', '')
+    
     def info(self):
         '''
         Return information about this harvester.
@@ -61,6 +59,11 @@ class OaipmhHarvester(HarvesterBase):
         harvest_objs = []
         registry = MetadataRegistry()
         registry.registerReader('oai_dc', oai_dc_reader)
+        config = json.loads(harvest_job.source.config)
+        if config:
+            username = config['username']
+            password = config['password']
+            self.credentials = (username, password)
         client = oaipmh.client.Client(harvest_job.source.url, registry, self.credentials)
         try:
             identifier = client.identify()
