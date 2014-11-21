@@ -59,10 +59,11 @@ class OaipmhHarvester(HarvesterBase):
         harvest_objs = []
         registry = MetadataRegistry()
         registry.registerReader('oai_dc', oai_dc_reader)
-        config = json.loads(harvest_job.source.config)
-        if config:
-            username = config['username']
-            password = config['password']
+        source_config = harvest_job.source.config
+        if source_config:
+            config_json = json.loads(source_config)
+            username = config_json['username']
+            password = config_json['password']
             self.credentials = (username, password)
         client = oaipmh.client.Client(harvest_job.source.url, registry, self.credentials)
         try:
