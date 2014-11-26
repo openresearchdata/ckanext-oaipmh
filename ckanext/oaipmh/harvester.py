@@ -87,8 +87,8 @@ class OaipmhHarvester(HarvesterBase):
                 else:
                     sets.append((identifier, name))
         except NoSetHierarchyError:
-            sets.append(('1', 'Default'))
-            self._save_gather_error('Could not fetch sets!', harvest_job)
+            log.debug('This repository does not support sets')
+            sets.append((None, None))
 
         for set_id, set_name in sets:
             harvest_obj = HarvestObject(job=harvest_job)
