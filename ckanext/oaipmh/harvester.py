@@ -119,17 +119,26 @@ class OaipmhHarvester(HarvesterBase):
         :returns: True if everything went right, False if errors were found
         '''
         sets = json.loads(harvest_object.content)
+        log.debug('sets: %s' % sets)
+        sets['set'] = None
+        sets['set_name'] = None
         registry = MetadataRegistry()
         registry.registerReader('oai_dc', oai_dc_reader)
         client = oaipmh.client.Client(harvest_object.job.source.url, registry, self.credentials)
         records = []
         recs = []
         try:
-            recs = client.listRecords(metadataPrefix='oai_dc', set=sets['set'])
+            if sets['set'] is not None:
+                recs = client.listRecords(metadataPrefix='oai_dc', set=sets['set'])
+            else:
+                recs = client.listRecords(metadataPrefix='oai_dc')
+            log.debug('records found!')
         except:
-            pass
+            log.exception('listRecords failed')
         for rec in recs:
             header, metadata, _ = rec
+            log.debug('metadata %s' % metadata)
+            log.debug('header %s' % header)
             if metadata:
                 records.append((header.identifier(), metadata.getMap(), None))
         if len(records):
