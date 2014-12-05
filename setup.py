@@ -25,7 +25,8 @@ setup(
     ],
     setup_requires=[
         'nose>=1.0',
-        'coverage'
+        'coverage',
+        'flake8'
     ],
     tests_require=[
         'nose',
