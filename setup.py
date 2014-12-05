@@ -20,17 +20,6 @@ setup(
     zip_safe=False,
     install_requires=[
         # -*- Extra requirements: -*-
-        'pyoai',
-        'ckanext-harvest'
-    ],
-    setup_requires=[
-        'nose>=1.0',
-        'coverage',
-        'flake8'
-    ],
-    tests_require=[
-        'nose',
-        'mock',
     ],
     entry_points=\
     """
