@@ -209,13 +209,7 @@ class OaipmhHarvester(HarvesterBase):
             package_dict['id'] = harvest_object.guid
             package_dict['name'] = munge_title_to_name(harvest_object.guid)
 
-            mapping = {
-                'title': 'title',
-                'notes': 'description',
-                'author': 'creator',
-                'maintainer': 'publisher',
-                'url': 'source'
-            }
+            mapping = self._get_mapping()
 
             for ckan_field, oai_field in mapping.iteritems():
                 try:
@@ -225,24 +219,12 @@ class OaipmhHarvester(HarvesterBase):
 
             # extract tags from 'type' and 'subject' field
             # everything else is added as extra field
-            extras = []
-            tags = []
-            for key, value in content.iteritems():
-                if key in mapping.values():
-                    continue
-                if key in ['type', 'subject']:
-                    if type(value) is list:
-                        tags.extend(value)
-                    else:
-                        tags.extend(value.split(';'))
-                    continue
-                if value and type(value) is list:
-                    value = value[0]
-                extras.append((key, value))
-
-            tags = [munge_tag(tag[:100]) for tag in tags]
+            tags, extras = self._extract_tags_and_extras(content)
             package_dict['tags'] = tags
             package_dict['extras'] = extras
+
+            # add resources
+            package_dict['resources'] = self._extract_resources(content)
 
             # create group based on set
             if content['set_spec']:
@@ -251,19 +233,6 @@ class OaipmhHarvester(HarvesterBase):
                     content['set_spec'],
                     context
                 )
-
-            # add resource if possible
-            for ident in content['identifier']:
-                if ident.startswith('http://'):
-                    url = ident
-                    break
-            if url:
-                package_dict['resources'] = [{
-                    'name': package_dict['title'],
-                    'resource_type': content['format'][0],
-                    'format': content['format'][0],
-                    'url': url
-                }]
 
             package = model.Package.get(package_dict['id'])
             model.PackageRole(
@@ -288,6 +257,54 @@ class OaipmhHarvester(HarvesterBase):
             )
             return False
         return True
+
+    def _get_mapping(self):
+        return {
+            'title': 'title',
+            'notes': 'description',
+            'author': 'creator',
+            'maintainer': 'publisher',
+            'url': 'source'
+        }
+
+    def _extract_tags_and_extras(self, content):
+        extras = []
+        tags = []
+        for key, value in content.iteritems():
+            if key in self._get_mapping().values():
+                continue
+            if key in ['type', 'subject']:
+                if type(value) is list:
+                    tags.extend(value)
+                else:
+                    tags.extend(value.split(';'))
+                continue
+            if value and type(value) is list:
+                value = value[0]
+            extras.append((key, value))
+
+        tags = [munge_tag(tag[:100]) for tag in tags]
+
+        return (tags, extras)
+
+    def _extract_resources(self, content):
+        resources = []
+        for ident in content['identifier']:
+            if ident.startswith('http://'):
+                url = ident
+                break
+        if url:
+            try:
+                resource_format = content['format'][0]
+            except (IndexError, KeyError):
+                resource_format = ''
+            resources.append({
+                'name': content['title'][0],
+                'resource_type': resource_format,
+                'format': resource_format,
+                'url': url
+            })
+        return resources
 
     def _find_or_create_groups(self, groups, context):
         log.debug('Group names: %s' % groups)
