@@ -23,6 +23,7 @@ class OaipmhHarvester(HarvesterBase):
 
     credentials = None
     md_format = 'oai_dc'
+    set_spec = None
 
     config = {
         'user': 'harvest'
@@ -64,9 +65,8 @@ class OaipmhHarvester(HarvesterBase):
                 self.credentials
             )
 
-            client.identify()
-            for header in client.listIdentifiers(
-                    metadataPrefix=self.md_format):
+            client.identify()  # check if identify works
+            for header in self._identifier_generator(client):
                 harvest_obj = HarvestObject(
                     guid=header.identifier(),
                     job=harvest_job
@@ -85,6 +85,21 @@ class OaipmhHarvester(HarvesterBase):
             return None
         return harvest_obj_ids
 
+    def _identifier_generator(self, client):
+        """
+        pyoai generates the URL based on the given method parameters
+        Therefore one may not use the set parameter if it is not there
+        """
+        if self.set_spec:
+            for header in client.listIdentifiers(
+                    metadataPrefix=self.md_format,
+                    set=self.set_spec):
+                yield header
+        else:
+            for header in client.listIdentifiers(
+                    metadataPrefix=self.md_format):
+                yield header
+
     def _create_metadata_registry(self):
         registry = MetadataRegistry()
         registry.registerReader('oai_dc', oai_dc_reader)
@@ -98,6 +113,11 @@ class OaipmhHarvester(HarvesterBase):
                 username = config_json['username']
                 password = config_json['password']
                 self.credentials = (username, password)
+            except (IndexError, KeyError):
+                pass
+
+            try:
+                self.set_spec = config_json['set']
             except (IndexError, KeyError):
                 pass
 
