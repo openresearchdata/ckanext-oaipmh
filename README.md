@@ -1,5 +1,7 @@
 # CKAN Harvester for OAI-PMH
 
+[![Build Status](https://travis-ci.org/openresearchdata/ckanext-oaipmh.svg?branch=master)](https://travis-ci.org/openresearchdata/ckanext-oaipmh)
+
 ## Instructions
 
 ### Installation
@@ -24,10 +26,10 @@ Make sure the ckanext-harvest extension is installed as well.
 - as URL fill in the base URL of an OAI-PMH conforming repository, e.g. http://boris.unibe.ch/cgi/oai2
 for more see http://www.openarchives.org/Register/BrowseSites
 - select **Source type** `OAI-PMH`
-- if your OAI-PMH needs credentials, add the following to the "Configuration" section: `{'username': 'foo', 'password': 'bar' } `
+- if your OAI-PMH needs credentials, add the following to the "Configuration" section: `{"username": "foo", "password": "bar" } `
+- if you only want to harvest a specific set, add the following to the "Configuration" section: `{"set": "baz"} `
 - Save
 - on the harvest admin click **Reharvest**
-- optionally you can add an option `ckan.oaipmh.query = <set>` in `development.ini` that limits the harvesting to a single set
 
 ### Run the Harvester
 
