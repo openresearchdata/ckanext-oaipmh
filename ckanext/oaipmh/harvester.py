@@ -1,5 +1,6 @@
 import logging
 import json
+import datetime
 
 from ckan.model import Session
 from ckan.logic import get_action
@@ -12,8 +13,53 @@ from ckanext.harvest.model import HarvestObject
 
 import oaipmh.client
 from oaipmh.metadata import MetadataRegistry, oai_dc_reader
+from oaipmh.error import DatestampError
+
+from metadata import oai_ddi_reader
 
 log = logging.getLogger(__name__)
+
+orginal_datestamp_to_datetime = oaipmh.datestamp._datestamp_to_datetime
+
+
+# monkey-patch pyoai to handle wrong date formats
+def datestamp_to_datetime_for_wrong_input(datestamp, inclusive=False):
+    try:
+        return orginal_datestamp_to_datetime(datestamp, inclusive)
+    except oaipmh.error.DatestampError:
+        try:
+            return oaipmh.datestamp.tolerant_datestamp_to_datetime(datestamp)
+        except oaipmh.error.DatestampError:
+            pass
+
+    splitted = datestamp.split('T')
+    if len(splitted) == 2:
+        d, t = splitted
+        if not t:
+            raise DatestampError(datestamp)
+        if t[-1] == 'Z':
+            t = t[:-1]  # strip off 'Z'
+        t = t.split('+')[0]  # remove timezone info
+    else:
+        d = splitted[0]
+        if inclusive:
+            # used when a date was specified as ?until parameter
+            t = '23:59:59'
+        else:
+            t = '00:00:00'
+    YYYY, MM, DD = d.split('-')
+    hh, mm, ss = t.split(':')  # this assumes there's no timezone info
+    return datetime.datetime(
+        int(YYYY),
+        int(MM),
+        int(DD),
+        int(hh),
+        int(mm),
+        int(ss)
+    )
+
+oaipmh.datestamp._datestamp_to_datetime = datestamp_to_datetime_for_wrong_input
+oaipmh.client.datestamp_to_datetime = datestamp_to_datetime_for_wrong_input
 
 
 class OaipmhHarvester(HarvesterBase):
@@ -103,6 +149,7 @@ class OaipmhHarvester(HarvesterBase):
     def _create_metadata_registry(self):
         registry = MetadataRegistry()
         registry.registerReader('oai_dc', oai_dc_reader)
+        registry.registerReader('oai_ddi', oai_ddi_reader)
         return registry
 
     def _set_config(self, source_config):
