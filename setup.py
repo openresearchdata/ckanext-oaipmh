@@ -20,16 +20,6 @@ setup(
     zip_safe=False,
     install_requires=[
         # -*- Extra requirements: -*-
-        'pyoai',
-        'ckanext-harvest'
-    ],
-    setup_requires=[
-        'nose>=1.0',
-        'coverage'
-    ],
-    tests_require=[
-        'nose',
-        'mock',
     ],
     entry_points=\
     """

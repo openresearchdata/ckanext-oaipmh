@@ -2,6 +2,20 @@
 
 ## Instructions
 
+### Installation
+
+Use `pip` to install this plugin. This example installs it in `/vagrant`
+
+```bash
+source /home/www-data/pyenv/bin/activate
+pip install -e git+https://github.com/openresearchdata/ckanext-oaipmh.git#egg=ckanext-oaipmh --src /vagrant
+cd /vagrant/ckanext-oaipmh
+pip install -r requirements.txt
+python setup.py develop
+```
+
+Make sure the ckanext-harvest extension is installed as well.
+
 ### Setup the Harvester
 
 - add `oaipmh_harvester` to `ckan.plugins` in `development.ini` (or `production.ini`)
