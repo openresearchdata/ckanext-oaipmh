@@ -1,6 +1,5 @@
 import logging
 import json
-import urllib2
 
 from ckan.model import Session
 from ckan.logic import get_action
@@ -54,19 +53,29 @@ class OaipmhHarvester(HarvesterBase):
         :param harvest_job: HarvestJob object
         :returns: A list of HarvestObject ids
         '''
-        harvest_obj_ids = []
-        registry = self._create_metadata_registry()
-        self._set_config(harvest_job.source.config)
-        client = oaipmh.client.Client(
-            harvest_job.source.url,
-            registry,
-            self.credentials
-        )
+        log.debug("in gather stage: %s" % harvest_job.source.url)
         try:
+            harvest_obj_ids = []
+            registry = self._create_metadata_registry()
+            self._set_config(harvest_job.source.config)
+            client = oaipmh.client.Client(
+                harvest_job.source.url,
+                registry,
+                self.credentials
+            )
+
             client.identify()
-        except urllib2.URLError:
+            for header in client.listIdentifiers(
+                    metadataPrefix=self.md_format):
+                harvest_obj = HarvestObject(
+                    guid=header.identifier(),
+                    job=harvest_job
+                )
+                harvest_obj.save()
+                harvest_obj_ids.append(harvest_obj.id)
+        except:
             log.exception(
-                'Could not gather anything from %s' %
+                'Gather stage failed %s' %
                 harvest_job.source.url
             )
             self._save_gather_error(
@@ -74,14 +83,6 @@ class OaipmhHarvester(HarvesterBase):
                 harvest_job.source.url, harvest_job
             )
             return None
-
-        for header in client.listIdentifiers(metadataPrefix=self.md_format):
-            harvest_obj = HarvestObject(
-                guid=header.identifier(),
-                job=harvest_job
-            )
-            harvest_obj.save()
-            harvest_obj_ids.append(harvest_obj.id)
         return harvest_obj_ids
 
     def _create_metadata_registry(self):
@@ -118,55 +119,63 @@ class OaipmhHarvester(HarvesterBase):
         :returns: True if everything went right, False if errors were found
         '''
         log.debug("in fetch stage: %s" % harvest_object.guid)
-        self._set_config(harvest_object.job.source.config)
-        registry = self._create_metadata_registry()
-        client = oaipmh.client.Client(
-            harvest_object.job.source.url,
-            registry,
-            self.credentials
-        )
-        record = None
         try:
-            log.debug(
-                "Load %s with metadata prefix '%s'" %
-                (harvest_object.guid, self.md_format)
+            self._set_config(harvest_object.job.source.config)
+            registry = self._create_metadata_registry()
+            client = oaipmh.client.Client(
+                harvest_object.job.source.url,
+                registry,
+                self.credentials
             )
-            record = client.getRecord(
-                identifier=harvest_object.guid,
-                metadataPrefix=self.md_format
-            )
-            log.debug('record found!')
-        except:
-            log.exception('getRecord failed')
-            self._save_object_error('Get record failed!', harvest_object)
-            return False
+            record = None
+            try:
+                log.debug(
+                    "Load %s with metadata prefix '%s'" %
+                    (harvest_object.guid, self.md_format)
+                )
+                record = client.getRecord(
+                    identifier=harvest_object.guid,
+                    metadataPrefix=self.md_format
+                )
+                log.debug('record found!')
+            except:
+                log.exception('getRecord failed')
+                self._save_object_error('Get record failed!', harvest_object)
+                return False
 
-        header, metadata, _ = record
-        log.debug('metadata %s' % metadata)
-        log.debug('header %s' % header)
+            header, metadata, _ = record
+            log.debug('metadata %s' % metadata)
+            log.debug('header %s' % header)
 
-        try:
-            metadata_modified = header.datestamp().isoformat()
-        except:
-            metadata_modified = None
+            try:
+                metadata_modified = header.datestamp().isoformat()
+            except:
+                metadata_modified = None
 
-        try:
-            content_dict = metadata.getMap()
-            content_dict['set_spec'] = header.setSpec()
-            if metadata_modified:
-                content_dict['metadata_modified'] = metadata_modified
-            log.debug(content_dict)
-            content = json.dumps(content_dict)
+            try:
+                content_dict = metadata.getMap()
+                content_dict['set_spec'] = header.setSpec()
+                if metadata_modified:
+                    content_dict['metadata_modified'] = metadata_modified
+                log.debug(content_dict)
+                content = json.dumps(content_dict)
+            except:
+                log.exception('Dumping the metadata failed!')
+                self._save_object_error(
+                    'Dumping the metadata failed!',
+                    harvest_object
+                )
+                return False
+
+            harvest_object.content = content
+            harvest_object.save()
         except:
-            log.exception('Dumping the metadata failed!')
+            log.exception('Something went wrong!')
             self._save_object_error(
-                'Dumping the metadata failed!',
+                'Exception in import stage',
                 harvest_object
             )
             return False
-
-        harvest_object.content = content
-        harvest_object.save()
 
         return True
 
