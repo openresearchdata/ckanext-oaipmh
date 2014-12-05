@@ -1,26 +1,18 @@
 import logging
 import json
-import unicodedata
-import string
 import urllib2
 
-from ckan.model import Session, Package, Group
-from ckan.logic import get_action, action
+from ckan.model import Session
+from ckan.logic import get_action
 from ckan import model
 
 from ckanext.harvest.harvesters.base import HarvesterBase
 from ckan.lib.munge import munge_tag
 from ckan.lib.munge import munge_title_to_name
 from ckanext.harvest.model import HarvestObject
-from ckan.model.authz import setup_default_user_roles
-
-from pylons import config
 
 import oaipmh.client
 from oaipmh.metadata import MetadataRegistry, oai_dc_reader
-from oaipmh.error import NoSetHierarchyError
-
-from pprint import pprint
 
 log = logging.getLogger(__name__)
 
@@ -29,14 +21,14 @@ class OaipmhHarvester(HarvesterBase):
     '''
     OAI-PMH Harvester
     '''
-    
+
     credentials = None
     md_format = 'oai_dc'
 
     config = {
         'user': 'harvest'
     }
-    
+
     def info(self):
         '''
         Return information about this harvester.
@@ -65,17 +57,29 @@ class OaipmhHarvester(HarvesterBase):
         harvest_obj_ids = []
         registry = self._create_metadata_registry()
         self._set_config(harvest_job.source.config)
-        client = oaipmh.client.Client(harvest_job.source.url, registry, self.credentials)
+        client = oaipmh.client.Client(
+            harvest_job.source.url,
+            registry,
+            self.credentials
+        )
         try:
-            identify = client.identify()
+            client.identify()
         except urllib2.URLError:
-            log.exception('Could not gather anything from %s' % harvest_job.source.url)
-            self._save_gather_error('Could not gather anything from %s!' %
-                                    harvest_job.source.url, harvest_job)
+            log.exception(
+                'Could not gather anything from %s' %
+                harvest_job.source.url
+            )
+            self._save_gather_error(
+                'Could not gather anything from %s!' %
+                harvest_job.source.url, harvest_job
+            )
             return None
 
         for header in client.listIdentifiers(metadataPrefix=self.md_format):
-            harvest_obj = HarvestObject(guid=header.identifier(), job=harvest_job)
+            harvest_obj = HarvestObject(
+                guid=header.identifier(),
+                job=harvest_job
+            )
             harvest_obj.save()
             harvest_obj_ids.append(harvest_obj.id)
         return harvest_obj_ids
@@ -84,7 +88,6 @@ class OaipmhHarvester(HarvesterBase):
         registry = MetadataRegistry()
         registry.registerReader('oai_dc', oai_dc_reader)
         return registry
-
 
     def _set_config(self, source_config):
         try:
@@ -117,11 +120,21 @@ class OaipmhHarvester(HarvesterBase):
         log.debug("in fetch stage: %s" % harvest_object.guid)
         self._set_config(harvest_object.job.source.config)
         registry = self._create_metadata_registry()
-        client = oaipmh.client.Client(harvest_object.job.source.url, registry, self.credentials)
+        client = oaipmh.client.Client(
+            harvest_object.job.source.url,
+            registry,
+            self.credentials
+        )
         record = None
         try:
-            log.debug("Load %s with metadata prefix '%s'" % (harvest_object.guid, self.md_format))
-            record = client.getRecord(identifier=harvest_object.guid, metadataPrefix=self.md_format)
+            log.debug(
+                "Load %s with metadata prefix '%s'" %
+                (harvest_object.guid, self.md_format)
+            )
+            record = client.getRecord(
+                identifier=harvest_object.guid,
+                metadataPrefix=self.md_format
+            )
             log.debug('record found!')
         except:
             log.exception('getRecord failed')
@@ -146,7 +159,10 @@ class OaipmhHarvester(HarvesterBase):
             content = json.dumps(content_dict)
         except:
             log.exception('Dumping the metadata failed!')
-            self._save_object_error('Dumping the metadata failed!', harvest_object)
+            self._save_object_error(
+                'Dumping the metadata failed!',
+                harvest_object
+            )
             return False
 
         harvest_object.content = content
@@ -177,7 +193,7 @@ class OaipmhHarvester(HarvesterBase):
             log.error('No harvest object received')
             self._save_object_error('No harvest object received')
             return False
-                
+
         try:
             user = model.User.get(self.config['user'])
             context = {
@@ -227,11 +243,14 @@ class OaipmhHarvester(HarvesterBase):
             tags = [munge_tag(tag[:100]) for tag in tags]
             package_dict['tags'] = tags
             package_dict['extras'] = extras
-            
+
             # create group based on set
             if content['set_spec']:
                 log.debug('set_spec: %s' % content['set_spec'])
-                package_dict['groups'] = self._find_or_create_groups(content['set_spec'], context)
+                package_dict['groups'] = self._find_or_create_groups(
+                    content['set_spec'],
+                    context
+                )
 
             # add resource if possible
             for ident in content['identifier']:
@@ -263,7 +282,10 @@ class OaipmhHarvester(HarvesterBase):
             log.debug("Finished record")
         except:
             log.exception('Something went wrong!')
-            self._save_object_error('Exception in import stage', harvest_object)
+            self._save_object_error(
+                'Exception in import stage',
+                harvest_object
+            )
             return False
         return True
 
