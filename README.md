@@ -27,7 +27,6 @@ for more see http://www.openarchives.org/Register/BrowseSites
 - if your OAI-PMH needs credentials, add the following to the "Configuration" section: `{'username': 'foo', 'password': 'bar' } `
 - Save
 - on the harvest admin click **Reharvest**
-- optionally you can add an option `ckan.oaipmh.query = <set>` in `development.ini` that limits the harvesting to a single set
 
 ### Run the Harvester
 
