@@ -5,10 +5,12 @@ import string
 import urllib2
 
 from ckan.model import Session, Package, Group
+from ckan.logic import get_action, action
 from ckan import model
 
 from ckanext.harvest.harvesters.base import HarvesterBase
 from ckan.lib.munge import munge_tag
+from ckan.lib.munge import munge_title_to_name
 from ckanext.harvest.model import HarvestObject
 from ckan.model.authz import setup_default_user_roles
 
@@ -29,6 +31,11 @@ class OaipmhHarvester(HarvesterBase):
     '''
     
     credentials = None
+    md_format = 'oai_dc'
+
+    config = {
+        'user': 'harvest'
+    }
     
     def info(self):
         '''
@@ -55,54 +62,43 @@ class OaipmhHarvester(HarvesterBase):
         :param harvest_job: HarvestJob object
         :returns: A list of HarvestObject ids
         '''
-        sets = []
-        harvest_objs = []
-        registry = MetadataRegistry()
-        registry.registerReader('oai_dc', oai_dc_reader)
-        source_config = harvest_job.source.config
-        if source_config:
-            config_json = json.loads(source_config)
-            username = config_json['username']
-            password = config_json['password']
-            self.credentials = (username, password)
+        harvest_obj_ids = []
+        registry = self._create_metadata_registry()
+        self._set_config(harvest_job.source.config)
         client = oaipmh.client.Client(harvest_job.source.url, registry, self.credentials)
         try:
-            identifier = client.identify()
+            identify = client.identify()
         except urllib2.URLError:
+            log.exception('Could not gather anything from %s' % harvest_job.source.url)
             self._save_gather_error('Could not gather anything from %s!' %
                                     harvest_job.source.url, harvest_job)
             return None
-        domain = identifier.repositoryName()
-        group = Group.by_name(domain)
-        if not group:
-            group = Group(name=domain, description=domain)
-        query = config.get('ckan.oaipmh.query', '')
-        log.debug('The OAI-PMH query parameter is: %s', query)
-        try:
-            for set in client.listSets():
-                identifier, name, _ = set
-                if query:
-                    if query in name:
-                        sets.append((identifier, name))
-                else:
-                    sets.append((identifier, name))
-        except NoSetHierarchyError:
-            log.debug('This repository does not support sets')
-            sets.append((None, None))
 
-        for set_id, set_name in sets:
-            harvest_obj = HarvestObject(job=harvest_job)
-            harvest_obj.content = json.dumps(
-                {
-                    'set': set_id,
-                    'set_name': set_name,
-                    'domain': domain
-                }
-            )
+        for header in client.listIdentifiers(metadataPrefix=self.md_format):
+            harvest_obj = HarvestObject(guid=header.identifier(), job=harvest_job)
             harvest_obj.save()
-            harvest_objs.append(harvest_obj.id)
-        model.repo.commit()
-        return harvest_objs
+            harvest_obj_ids.append(harvest_obj.id)
+        return harvest_obj_ids
+
+    def _create_metadata_registry(self):
+        registry = MetadataRegistry()
+        registry.registerReader('oai_dc', oai_dc_reader)
+        return registry
+
+
+    def _set_config(self, source_config):
+        try:
+            config_json = json.loads(source_config)
+            log.debug('config_json: %s' % config_json)
+            try:
+                username = config_json['username']
+                password = config_json['password']
+                self.credentials = (username, password)
+            except (IndexError, KeyError):
+                pass
+
+        except ValueError:
+            pass
 
     def fetch_stage(self, harvest_object):
         '''
@@ -118,36 +114,44 @@ class OaipmhHarvester(HarvesterBase):
         :param harvest_object: HarvestObject object
         :returns: True if everything went right, False if errors were found
         '''
-        sets = json.loads(harvest_object.content)
-        log.debug('sets: %s' % sets)
-        sets['set'] = None
-        sets['set_name'] = None
-        registry = MetadataRegistry()
-        registry.registerReader('oai_dc', oai_dc_reader)
+        log.debug("in fetch stage: %s" % harvest_object.guid)
+        self._set_config(harvest_object.job.source.config)
+        registry = self._create_metadata_registry()
         client = oaipmh.client.Client(harvest_object.job.source.url, registry, self.credentials)
-        records = []
-        recs = []
+        record = None
         try:
-            if sets['set'] is not None:
-                recs = client.listRecords(metadataPrefix='oai_dc', set=sets['set'])
-            else:
-                recs = client.listRecords(metadataPrefix='oai_dc')
-            log.debug('records found!')
+            log.debug("Load %s with metadata prefix '%s'" % (harvest_object.guid, self.md_format))
+            record = client.getRecord(identifier=harvest_object.guid, metadataPrefix=self.md_format)
+            log.debug('record found!')
         except:
-            log.exception('listRecords failed')
-        for rec in recs:
-            header, metadata, _ = rec
-            log.debug('metadata %s' % metadata)
-            log.debug('header %s' % header)
-            if metadata:
-                records.append((header.identifier(), metadata.getMap(), None))
-        if len(records):
-            sets['records'] = records
-            harvest_object.content = json.dumps(sets)
-        else:
-            self._save_object_error('Could not find any records for set %s!' %
-                                    sets['set'], harvest_object)
+            log.exception('getRecord failed')
+            self._save_object_error('Get record failed!', harvest_object)
             return False
+
+        header, metadata, _ = record
+        log.debug('metadata %s' % metadata)
+        log.debug('header %s' % header)
+
+        try:
+            metadata_modified = header.datestamp().isoformat()
+        except:
+            metadata_modified = None
+
+        try:
+            content_dict = metadata.getMap()
+            content_dict['set_spec'] = header.setSpec()
+            if metadata_modified:
+                content_dict['metadata_modified'] = metadata_modified
+            log.debug(content_dict)
+            content = json.dumps(content_dict)
+        except:
+            log.exception('Dumping the metadata failed!')
+            self._save_object_error('Dumping the metadata failed!', harvest_object)
+            return False
+
+        harvest_object.content = content
+        harvest_object.save()
+
         return True
 
     def import_stage(self, harvest_object):
@@ -167,87 +171,118 @@ class OaipmhHarvester(HarvesterBase):
         :param harvest_object: HarvestObject object
         :returns: True if everything went right, False if errors were found
         '''
-        model.repo.new_revision()
-        master_data = json.loads(harvest_object.content)
-        domain = master_data['domain']
-        group = Group.get(domain)
-        if not group:
-            group = Group(name=domain, description=domain)
-        if 'records' in master_data:
-            records = master_data['records']
-            set_name = master_data['set_name']
-            for rec in records:
-                identifier, metadata, _ = rec
-                if metadata:
-                    name = metadata['title'][0] if len(metadata['title'])\
-                                                else identifier
-                    title = name
-                    norm_title = unicodedata.normalize('NFKD', name)\
-                                 .encode('ASCII', 'ignore')\
-                                 .lower().replace(' ', '_')[:35]
-                    slug = ''.join(e for e in norm_title
-                                    if e in string.ascii_letters + '_')
-                    name = slug
-                    creator = metadata['creator'][0]\
-                                if len(metadata['creator']) else ''
-                    description = metadata['description'][0]\
-                                if len(metadata['description']) else ''
-                    pkg = Package.by_name(name)
-                    if not pkg:
-                        pkg = Package(name=name, title=title)
-                    extras = {}
-                    for met in metadata.items():
-                        key, value = met
-                        if len(value) > 0:
-                            if key == 'subject' or key == 'type':
-                                for tag in value:
-                                    if tag:
-                                        tag = munge_tag(tag[:100])
-                                        tag_obj = model.Tag.by_name(tag)
-                                        if not tag_obj:
-                                            tag_obj = model.Tag(name=tag)
-                                        if tag_obj:
-                                            pkgtag = model.PackageTag(
-                                                                  tag=tag_obj,
-                                                                  package=pkg)
-                                            Session.add(tag_obj)
-                                            Session.add(pkgtag)
-                            else:
-                                extras[key] = ' '.join(value)
-                    pkg.author = creator
-                    pkg.author_email = creator
-                    pkg.title = title
-                    pkg.notes = description
-                    pkg.extras = extras
-                    pkg.url = \
-                    "%s?verb=GetRecord&identifier=%s&metadataPrefix=oai_dc"\
-                                % (harvest_object.job.source.url, identifier)
-                    pkg.save()
-                    harvest_object.package_id = pkg.id
-                    Session.add(harvest_object)
-                    setup_default_user_roles(pkg)
-                    url = ''
-                    for ids in metadata['identifier']:
-                        if ids.startswith('http://'):
-                            url = ids
-                    title = metadata['title'][0] if len(metadata['title'])\
-                                                    else ''
-                    description = metadata['description'][0]\
-                                    if len(metadata['description']) else ''
-                    pkg.add_resource(url, description=description, name=title)
-                    group.add_package_by_name(pkg.name)
-                    subg_name = "%s - %s" % (domain, set_name)
-                    subgroup = Group.by_name(subg_name)
-                    if not subgroup:
-                        subgroup = Group(name=subg_name, description=subg_name)
-                    subgroup.add_package_by_name(pkg.name)
-                    Session.add(group)
-                    Session.add(subgroup)
-                    setup_default_user_roles(group)
-                    setup_default_user_roles(subgroup)
-            model.repo.commit()
-        else:
-            self._save_object_error('Could not receive any objects from fetch!'
-                                    , harvest_object, stage='Import')
+
+        log.debug("in import stage: %s" % harvest_object.guid)
+        if not harvest_object:
+            log.error('No harvest object received')
+            self._save_object_error('No harvest object received')
+            return False
+                
+        try:
+            user = model.User.get(self.config['user'])
+            context = {
+                'model': model,
+                'session': Session,
+                'user': self.config['user']
+            }
+
+            package_dict = {}
+            content = json.loads(harvest_object.content)
+            log.debug(content)
+
+            package_dict['id'] = harvest_object.guid
+            package_dict['name'] = munge_title_to_name(harvest_object.guid)
+
+            mapping = {
+                'title': 'title',
+                'notes': 'description',
+                'author': 'creator',
+                'maintainer': 'publisher',
+                'url': 'source'
+            }
+
+            for ckan_field, oai_field in mapping.iteritems():
+                try:
+                    package_dict[ckan_field] = content[oai_field][0]
+                except IndexError:
+                    continue
+
+            # extract tags from 'type' and 'subject' field
+            # everything else is added as extra field
+            extras = []
+            tags = []
+            for key, value in content.iteritems():
+                if key in mapping.values():
+                    continue
+                if key in ['type', 'subject']:
+                    if type(value) is list:
+                        tags.extend(value)
+                    else:
+                        tags.extend(value.split(';'))
+                    continue
+                if value and type(value) is list:
+                    value = value[0]
+                extras.append((key, value))
+
+            tags = [munge_tag(tag[:100]) for tag in tags]
+            package_dict['tags'] = tags
+            package_dict['extras'] = extras
+            
+            # create group based on set
+            if content['set_spec']:
+                log.debug('set_spec: %s' % content['set_spec'])
+                package_dict['groups'] = self._find_or_create_groups(content['set_spec'], context)
+
+            # add resource if possible
+            for ident in content['identifier']:
+                if ident.startswith('http://'):
+                    url = ident
+                    break
+            if url:
+                package_dict['resources'] = [{
+                    'name': package_dict['title'],
+                    'resource_type': content['format'][0],
+                    'format': content['format'][0],
+                    'url': url
+                }]
+
+            package = model.Package.get(package_dict['id'])
+            model.PackageRole(
+                package=package,
+                user=user,
+                role=model.Role.ADMIN
+            )
+
+            self._create_or_update_package(
+                package_dict,
+                harvest_object
+            )
+
+            Session.commit()
+
+            log.debug("Finished record")
+        except:
+            log.exception('Something went wrong!')
+            self._save_object_error('Exception in import stage', harvest_object)
             return False
         return True
+
+    def _find_or_create_groups(self, groups, context):
+        log.debug('Group names: %s' % groups)
+        group_ids = []
+        for group_name in groups:
+            data_dict = {
+                'id': group_name,
+                'name': munge_title_to_name(group_name),
+                'title': group_name
+            }
+            try:
+                group = get_action('group_show')(context, data_dict)
+                log.info('found the group ' + group['id'])
+            except:
+                group = get_action('group_create')(context, data_dict)
+                log.info('created the group ' + group['id'])
+            group_ids.append(group['id'])
+
+        log.debug('Group ids: %s' % group_ids)
+        return group_ids
