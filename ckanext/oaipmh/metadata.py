@@ -2,21 +2,21 @@ from oaipmh.metadata import MetadataReader
 
 oai_ddi_reader = MetadataReader(
     fields={
-        'title':       ('textList', 'oai_ddi:codeBook/oai_ddi:stdyDscr/citation/titlStmt/title/text()'),
-        'creator':     ('textList', 'oai_ddi:codeBook/oai_ddi:stdyDscr/citation/rspStmt/AuthEnty/text()'),
-        'subject':     ('textList', 'oai_dc:dc/dc:subject/text()'),
-        'description': ('textList', 'oai_dc:dc/dc:description/text()'),
-        'publisher':   ('textList', 'oai_dc:dc/dc:publisher/text()'),
-        'contributor': ('textList', 'oai_dc:dc/dc:contributor/text()'),
-        'date':        ('textList', 'oai_dc:dc/dc:date/text()'),
-        'type':        ('textList', 'oai_dc:dc/dc:type/text()'),
-        'format':      ('textList', 'oai_dc:dc/dc:format/text()'),
-        'identifier':  ('textList', 'oai_dc:dc/dc:identifier/text()'),
-        'source':      ('textList', 'oai_dc:dc/dc:source/text()'),
-        'language':    ('textList', 'oai_dc:dc/dc:language/text()'),
-        'relation':    ('textList', 'oai_dc:dc/dc:relation/text()'),
-        'coverage':    ('textList', 'oai_dc:dc/dc:coverage/text()'),
-        'rights':      ('textList', 'oai_dc:dc/dc:rights/text()')
+        'title':        ('textList', 'oai_ddi:codeBook/stdyDscr/citation/titlStmt/titl/text()'),  # noqa
+        'creator':      ('textList', 'oai_ddi:codeBook/stdyDscr/citation/rspStmt/AuthEnty/text()'),  # noqa
+        'subject':      ('textList', 'oai_ddi:codeBook/stdyDscr/stdyInfo/subject/keyword/text()'),  # noqa
+        'description':  ('textList', 'oai_ddi:codeBook/stdyDscr/stdyInfo/abstract/text()'),  # noqa
+        'publisher':    ('textList', 'oai_ddi:codeBook/stdyDscr/citation/distStmt/contact/text()'),  # noqa
+        'contributor':  ('textList', 'oai_ddi:codeBook/stdyDscr/citation/contributor/text()'),  # noqa
+        'date':         ('textList', 'oai_ddi:codeBook/stdyDscr/citation/prodStmt/prodDate/text()'),  # noqa
+        'type':         ('textList', 'oai_ddi:codeBook/stdyDscr/stdyInfo/sumDscr/dataKind/text()'),  # noqa
+        'format':       ('textList', 'oai_ddi:codeBook/fileDscr/fileType/text()'),  # noqa
+        'identifier':   ('textList', "oai_ddi:codeBook/stdyDscr/citation/titlStmt/IDNo/text()"),  # noqa
+        'source':       ('textList', 'oai_ddi:codeBook/stdyDscr/dataAccs/setAvail/accsPlac/@URI'),  # noqa
+        'language':     ('textList', 'oai_ddi:codeBook/@xml:lang'),  # noqa
+        'tempCoverage': ('textList', 'oai_ddi:codeBook/stdyDscr/stdyInfo/sumDscr/timePrd/text()'),  # noqa
+        'geoCoverage':  ('textList', 'oai_ddi:codeBook/stdyDscr/stdyInfo/sumDscr/geogCover/text()'),  # noqa
+        'rights':       ('textList', 'oai_ddi:codeBook/stdyInfo/citation/prodStmt/copyright/text()')   # noqa
     },
     namespaces={
         'oai_ddi': 'http://www.icpsr.umich.edu/DDI',
