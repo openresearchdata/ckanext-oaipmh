@@ -121,6 +121,11 @@ class OaipmhHarvester(HarvesterBase):
             except (IndexError, KeyError):
                 pass
 
+            try:
+                self.md_format = config_json['metadata_prefix']
+            except (IndexError, KeyError):
+                pass
+
         except ValueError:
             pass
 
@@ -192,7 +197,7 @@ class OaipmhHarvester(HarvesterBase):
         except:
             log.exception('Something went wrong!')
             self._save_object_error(
-                'Exception in import stage',
+                'Exception in fetch stage',
                 harvest_object
             )
             return False
@@ -243,7 +248,7 @@ class OaipmhHarvester(HarvesterBase):
             for ckan_field, oai_field in mapping.iteritems():
                 try:
                     package_dict[ckan_field] = content[oai_field][0]
-                except IndexError:
+                except (IndexError, KeyError):
                     continue
 
             # extract tags from 'type' and 'subject' field
@@ -253,6 +258,8 @@ class OaipmhHarvester(HarvesterBase):
             package_dict['extras'] = extras
 
             # add resources
+            if 'identifier' not in content:
+                content['identifier'] = harvest_object.guid
             package_dict['resources'] = self._extract_resources(content)
 
             # create group based on set
@@ -270,6 +277,7 @@ class OaipmhHarvester(HarvesterBase):
                 role=model.Role.ADMIN
             )
 
+            log.debug('Create/update package using dict: %s' % package_dict)
             self._create_or_update_package(
                 package_dict,
                 harvest_object
@@ -318,6 +326,7 @@ class OaipmhHarvester(HarvesterBase):
 
     def _extract_resources(self, content):
         resources = []
+        url = None
         for ident in content['identifier']:
             if ident.startswith('http://'):
                 url = ident
