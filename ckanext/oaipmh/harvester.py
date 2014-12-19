@@ -263,15 +263,14 @@ class OaipmhHarvester(HarvesterBase):
                 except (IndexError, KeyError):
                     continue
 
+            # add resources
+            content['identifier'].append(harvest_object.guid)
+
             # extract tags from 'type' and 'subject' field
             # everything else is added as extra field
             tags, extras = self._extract_tags_and_extras(content)
             package_dict['tags'] = tags
             package_dict['extras'] = extras
-
-            # add resources
-            if 'identifier' not in content:
-                content['identifier'] = harvest_object.guid
             package_dict['resources'] = self._extract_resources(content)
 
             # create group based on set
@@ -343,6 +342,8 @@ class OaipmhHarvester(HarvesterBase):
             if ident.startswith('http://'):
                 url = ident
                 break
+        log.debug('Identifer for ressource: %s' % content['identifier'])
+        log.debug('URL for ressource: %s' % url)
         if url:
             try:
                 resource_format = content['format'][0]
