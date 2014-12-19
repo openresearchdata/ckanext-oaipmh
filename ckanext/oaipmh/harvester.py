@@ -13,6 +13,8 @@ from ckanext.harvest.model import HarvestObject
 import oaipmh.client
 from oaipmh.metadata import MetadataRegistry, oai_dc_reader
 
+from metadata import oai_ddi_reader
+
 log = logging.getLogger(__name__)
 
 
@@ -103,6 +105,7 @@ class OaipmhHarvester(HarvesterBase):
     def _create_metadata_registry(self):
         registry = MetadataRegistry()
         registry.registerReader('oai_dc', oai_dc_reader)
+        registry.registerReader('oai_ddi', oai_ddi_reader)
         return registry
 
     def _set_config(self, source_config):
@@ -158,10 +161,13 @@ class OaipmhHarvester(HarvesterBase):
                     "Load %s with metadata prefix '%s'" %
                     (harvest_object.guid, self.md_format)
                 )
+
+                self._before_record_fetch(harvest_object)
                 record = client.getRecord(
                     identifier=harvest_object.guid,
                     metadataPrefix=self.md_format
                 )
+                self._after_record_fetch(record)
                 log.debug('record found!')
             except:
                 log.exception('getRecord failed')
@@ -203,6 +209,12 @@ class OaipmhHarvester(HarvesterBase):
             return False
 
         return True
+
+    def _before_record_fetch(self, harvest_object):
+        pass
+
+    def _after_record_fetch(self, record):
+        pass
 
     def import_stage(self, harvest_object):
         '''
@@ -251,15 +263,14 @@ class OaipmhHarvester(HarvesterBase):
                 except (IndexError, KeyError):
                     continue
 
+            # add resources
+            content['identifier'].append(harvest_object.guid)
+
             # extract tags from 'type' and 'subject' field
             # everything else is added as extra field
             tags, extras = self._extract_tags_and_extras(content)
             package_dict['tags'] = tags
             package_dict['extras'] = extras
-
-            # add resources
-            if 'identifier' not in content:
-                content['identifier'] = harvest_object.guid
             package_dict['resources'] = self._extract_resources(content)
 
             # create group based on set
@@ -318,6 +329,8 @@ class OaipmhHarvester(HarvesterBase):
                 continue
             if value and type(value) is list:
                 value = value[0]
+            if not value:
+                value = None
             extras.append((key, value))
 
         tags = [munge_tag(tag[:100]) for tag in tags]
@@ -331,6 +344,8 @@ class OaipmhHarvester(HarvesterBase):
             if ident.startswith('http://'):
                 url = ident
                 break
+        log.debug('Identifer for ressource: %s' % content['identifier'])
+        log.debug('URL for ressource: %s' % url)
         if url:
             try:
                 resource_format = content['format'][0]
