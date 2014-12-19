@@ -329,6 +329,8 @@ class OaipmhHarvester(HarvesterBase):
                 continue
             if value and type(value) is list:
                 value = value[0]
+            if not value:
+                value = None
             extras.append((key, value))
 
         tags = [munge_tag(tag[:100]) for tag in tags]
