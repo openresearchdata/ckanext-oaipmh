@@ -22,3 +22,28 @@ oai_ddi_reader = MetadataReader(
         'oai_ddi': 'http://www.icpsr.umich.edu/DDI',
     }
 )
+
+# Note: maintainer_email is not part of Dublin Core
+oai_dc_reader = MetadataReader(
+    fields={
+        'title':            ('textList', 'oai_dc:dc/dc:title/text()'),  # noqa
+        'creator':          ('textList', 'oai_dc:dc/dc:creator/text()'),  # noqa
+        'subject':          ('textList', 'oai_dc:dc/dc:subject/text()'),  # noqa
+        'description':      ('textList', 'oai_dc:dc/dc:description/text()'),  # noqa
+        'publisher':        ('textList', 'oai_dc:dc/dc:publisher/text()'),  # noqa
+        'maintainer_email': ('textList', 'oai_dc:dc/maintainer_email/text()'),  # noqa
+        'contributor':      ('textList', 'oai_dc:dc/dc:contributor/text()'),  # noqa
+        'date':             ('textList', 'oai_dc:dc/dc:date/text()'),  # noqa
+        'type':             ('textList', 'oai_dc:dc/dc:type/text()'),  # noqa
+        'format':           ('textList', 'oai_dc:dc/dc:format/text()'),  # noqa
+        'identifier':       ('textList', 'oai_dc:dc/dc:identifier/text()'),  # noqa
+        'source':           ('textList', 'oai_dc:dc/dc:source/text()'),  # noqa
+        'language':         ('textList', 'oai_dc:dc/dc:language/text()'),  # noqa
+        'relation':         ('textList', 'oai_dc:dc/dc:relation/text()'),  # noqa
+        'coverage':         ('textList', 'oai_dc:dc/dc:coverage/text()'),  # noqa
+        'rights':           ('textList', 'oai_dc:dc/dc:rights/text()')  # noqa
+    },
+    namespaces={
+    'oai_dc': 'http://www.openarchives.org/OAI/2.0/oai_dc/',
+    'dc': 'http://purl.org/dc/elements/1.1/'}
+)
