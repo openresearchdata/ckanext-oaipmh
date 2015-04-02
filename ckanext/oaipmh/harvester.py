@@ -11,9 +11,10 @@ from ckan.lib.munge import munge_title_to_name
 from ckanext.harvest.model import HarvestObject
 
 import oaipmh.client
-from oaipmh.metadata import MetadataRegistry, oai_dc_reader
+from oaipmh.metadata import MetadataRegistry
 
 from metadata import oai_ddi_reader
+from metadata import oai_dc_reader
 
 log = logging.getLogger(__name__)
 
@@ -263,15 +264,21 @@ class OaipmhHarvester(HarvesterBase):
                 except (IndexError, KeyError):
                     continue
 
+            # add author
+            package_dict['author'] = self._extract_author(content)
+
+            # add license
+            package_dict['license_id'] = self._extract_license_id(content)
+
             # add resources
-            content['identifier'].append(harvest_object.guid)
+            url = self._get_possible_resource(harvest_object, content)
+            package_dict['resources'] = self._extract_resources(url, content)
 
             # extract tags from 'type' and 'subject' field
             # everything else is added as extra field
             tags, extras = self._extract_tags_and_extras(content)
             package_dict['tags'] = tags
             package_dict['extras'] = extras
-            package_dict['resources'] = self._extract_resources(content)
 
             # create group based on set
             if content['set_spec']:
@@ -280,6 +287,12 @@ class OaipmhHarvester(HarvesterBase):
                     content['set_spec'],
                     context
                 )
+
+            # allow sub-classes to add additional fields
+            package_dict = self._extract_additional_fields(
+                content,
+                package_dict
+            )
 
             package = model.Package.get(package_dict['id'])
             model.PackageRole(
@@ -310,10 +323,15 @@ class OaipmhHarvester(HarvesterBase):
         return {
             'title': 'title',
             'notes': 'description',
-            'author': 'creator',
             'maintainer': 'publisher',
-            'url': 'source'
+            'url': 'source',
         }
+
+    def _extract_author(self, content):
+        return content['creator']
+
+    def _extract_license_id(self, content):
+        return content['rights']
 
     def _extract_tags_and_extras(self, content):
         extras = []
@@ -337,20 +355,24 @@ class OaipmhHarvester(HarvesterBase):
 
         return (tags, extras)
 
-    def _extract_resources(self, content):
-        resources = []
+    def _get_possible_resource(self, harvest_obj, content):
         url = None
-        for ident in content['identifier']:
-            if ident.startswith('http://'):
+        candidates = content['identifier']
+        candidates.append(harvest_obj.guid)
+        for ident in candidates:
+            if ident.startswith('http://') or ident.startswith('https://'):
                 url = ident
                 break
-        log.debug('Identifer for ressource: %s' % content['identifier'])
-        log.debug('URL for ressource: %s' % url)
+        return url
+
+    def _extract_resources(self, url, content):
+        resources = []
+        log.debug('URL of ressource: %s' % url)
         if url:
             try:
                 resource_format = content['format'][0]
             except (IndexError, KeyError):
-                resource_format = ''
+                resource_format = 'HTML'
             resources.append({
                 'name': content['title'][0],
                 'resource_type': resource_format,
@@ -358,6 +380,11 @@ class OaipmhHarvester(HarvesterBase):
                 'url': url
             })
         return resources
+
+    def _extract_additional_fields(self, content, package_dict):
+        # This method is the ideal place for sub-classes to
+        # change whatever they want in the package_dict
+        return package_dict
 
     def _find_or_create_groups(self, groups, context):
         log.debug('Group names: %s' % groups)
