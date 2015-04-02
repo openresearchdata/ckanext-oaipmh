@@ -288,6 +288,12 @@ class OaipmhHarvester(HarvesterBase):
                     context
                 )
 
+            # allow sub-classes to add additional fields
+            package_dict = self._extract_additional_fields(
+                content,
+                package_dict
+            )
+
             package = model.Package.get(package_dict['id'])
             model.PackageRole(
                 package=package,
@@ -374,6 +380,11 @@ class OaipmhHarvester(HarvesterBase):
                 'url': url
             })
         return resources
+
+    def _extract_additional_fields(self, content, package_dict):
+        # This method is the ideal place for sub-classes to
+        # change whatever they want in the package_dict
+        return package_dict
 
     def _find_or_create_groups(self, groups, context):
         log.debug('Group names: %s' % groups)
