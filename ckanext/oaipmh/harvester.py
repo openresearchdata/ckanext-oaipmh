@@ -324,6 +324,7 @@ class OaipmhHarvester(HarvesterBase):
             'title': 'title',
             'notes': 'description',
             'maintainer': 'publisher',
+            'maintainer_email': 'maintainer_email',
             'url': 'source',
         }
 
