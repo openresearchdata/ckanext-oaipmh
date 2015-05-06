@@ -253,8 +253,8 @@ class OaipmhHarvester(HarvesterBase):
             content = json.loads(harvest_object.content)
             log.debug(content)
 
-            package_dict['id'] = harvest_object.guid
-            package_dict['name'] = munge_title_to_name(harvest_object.guid)
+            package_dict['id'] = munge_title_to_name(harvest_object.guid)
+            package_dict['name'] = package_dict['id']
 
             mapping = self._get_mapping()
 
