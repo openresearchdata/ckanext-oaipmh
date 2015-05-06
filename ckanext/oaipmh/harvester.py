@@ -280,13 +280,25 @@ class OaipmhHarvester(HarvesterBase):
             package_dict['tags'] = tags
             package_dict['extras'] = extras
 
+            # groups aka projects
+            groups = []
+
             # create group based on set
             if content['set_spec']:
                 log.debug('set_spec: %s' % content['set_spec'])
-                package_dict['groups'] = self._find_or_create_groups(
-                    content['set_spec'],
-                    context
+                groups.extend(
+                    self._find_or_create_groups(
+                        content['set_spec'],
+                        context
+                    )
                 )
+
+            # allow sub-classes to add groups
+            groups.extend(
+                self._extract_groups(content)
+            )
+
+            package_dict['groups'] = groups
 
             # allow sub-classes to add additional fields
             package_dict = self._extract_additional_fields(
@@ -381,6 +393,10 @@ class OaipmhHarvester(HarvesterBase):
                 'url': url
             })
         return resources
+
+    def _extract_groups(self, content):
+        # This method is the ideal place for sub-classes to add groups
+        return []
 
     def _extract_additional_fields(self, content, package_dict):
         # This method is the ideal place for sub-classes to
