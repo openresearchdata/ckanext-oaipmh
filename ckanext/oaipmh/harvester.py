@@ -293,7 +293,7 @@ class OaipmhHarvester(HarvesterBase):
                     )
                 )
 
-            # allow sub-classes to add groups
+            # add groups from content
             groups.extend(
                 self._extract_groups(content, context)
             )
@@ -395,7 +395,11 @@ class OaipmhHarvester(HarvesterBase):
         return resources
 
     def _extract_groups(self, content, context):
-        # This method is the ideal place for sub-classes to add groups
+        if len(content['series']) > 0:
+            return self._find_or_create_groups(
+                content['series'],
+                context
+            )
         return []
 
     def _extract_additional_fields(self, content, package_dict):
