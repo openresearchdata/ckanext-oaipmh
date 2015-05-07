@@ -329,10 +329,10 @@ class OaipmhHarvester(HarvesterBase):
         }
 
     def _extract_author(self, content):
-        return content['creator']
+        return ', '.join(content['creator'])
 
     def _extract_license_id(self, content):
-        return content['rights']
+        return content['rights'][0]
 
     def _extract_tags_and_extras(self, content):
         extras = []
