@@ -344,7 +344,7 @@ class OaipmhHarvester(HarvesterBase):
         return ', '.join(content['creator'])
 
     def _extract_license_id(self, content):
-        return content['rights'][0]
+        return ', '.join(content['rights'])
 
     def _extract_tags_and_extras(self, content):
         extras = []
