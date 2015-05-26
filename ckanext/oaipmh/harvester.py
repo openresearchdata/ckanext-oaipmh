@@ -395,7 +395,7 @@ class OaipmhHarvester(HarvesterBase):
         return resources
 
     def _extract_groups(self, content, context):
-        if len(content['series']) > 0:
+        if 'series' in content and len(content['series']) > 0:
             return self._find_or_create_groups(
                 content['series'],
                 context
