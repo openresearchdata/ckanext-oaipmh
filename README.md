@@ -18,7 +18,7 @@ python setup.py develop
 
 Make sure the ckanext-harvest extension is installed as well.
 
-**Important:**: You need to have a sysadmin user called "harvest" on your CKAN instance!
+**Important: You need to have a sysadmin user called "harvest" on your CKAN instance!**
 
 ### Setup the Harvester
 
