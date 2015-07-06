@@ -6,17 +6,19 @@
 
 ### Installation
 
-Use `pip` to install this plugin. This example installs it in `/vagrant`
+Use `pip` to install this plugin. This example installs it in `/var/www`
 
 ```bash
 source /home/www-data/pyenv/bin/activate
-pip install -e git+https://github.com/openresearchdata/ckanext-oaipmh.git#egg=ckanext-oaipmh --src /vagrant
-cd /vagrant/ckanext-oaipmh
+pip install -e git+https://github.com/openresearchdata/ckanext-oaipmh.git#egg=ckanext-oaipmh --src /var/www
+cd /var/www/ckanext-oaipmh
 pip install -r requirements.txt
 python setup.py develop
 ```
 
 Make sure the ckanext-harvest extension is installed as well.
+
+**Important:**: You need to have a sysadmin user called "harvest" on your CKAN instance!
 
 ### Setup the Harvester
 
@@ -55,7 +57,7 @@ The harvester should now start and import the OAI-PMH metadata.
 To make it easier to develop, tests are setup that allow to do that:
 
     . ~/default/bin/activate
-    cd /vagrant/ckanext-oaipmh
+    cd /var/www/ckanext-oaipmh
 
     nosetests --logging-filter=ckanext.oaipmh.harvester --ckan --with-pylons=test.ini ckanext/oaipmh/tests
 
