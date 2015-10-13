@@ -242,7 +242,6 @@ class OaipmhHarvester(HarvesterBase):
             return False
 
         try:
-            user = model.User.get(self.config['user'])
             context = {
                 'model': model,
                 'session': Session,
