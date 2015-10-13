@@ -306,13 +306,6 @@ class OaipmhHarvester(HarvesterBase):
                 package_dict
             )
 
-            package = model.Package.get(package_dict['id'])
-            model.PackageRole(
-                package=package,
-                user=user,
-                role=model.Role.ADMIN
-            )
-
             log.debug('Create/update package using dict: %s' % package_dict)
             self._create_or_update_package(
                 package_dict,
