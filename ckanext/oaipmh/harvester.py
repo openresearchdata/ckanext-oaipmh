@@ -267,8 +267,10 @@ class OaipmhHarvester(HarvesterBase):
             package_dict['author'] = self._extract_author(content)
 
             # add owner_org
-            source_dataset = get_action('package_show') \
-              (context, {'id': harvest_object.source.id})
+            source_dataset = get_action('package_show')(
+              context,
+              {'id': harvest_object.source.id}
+            )
             owner_org = source_dataset.get('owner_org')
             package_dict['owner_org'] = owner_org
 
