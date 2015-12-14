@@ -242,7 +242,6 @@ class OaipmhHarvester(HarvesterBase):
             return False
 
         try:
-            user = model.User.get(self.config['user'])
             context = {
                 'model': model,
                 'session': Session,
@@ -266,6 +265,14 @@ class OaipmhHarvester(HarvesterBase):
 
             # add author
             package_dict['author'] = self._extract_author(content)
+
+            # add owner_org
+            source_dataset = get_action('package_show')(
+              context,
+              {'id': harvest_object.source.id}
+            )
+            owner_org = source_dataset.get('owner_org')
+            package_dict['owner_org'] = owner_org
 
             # add license
             package_dict['license_id'] = self._extract_license_id(content)
@@ -304,13 +311,6 @@ class OaipmhHarvester(HarvesterBase):
             package_dict = self._extract_additional_fields(
                 content,
                 package_dict
-            )
-
-            package = model.Package.get(package_dict['id'])
-            model.PackageRole(
-                package=package,
-                user=user,
-                role=model.Role.ADMIN
             )
 
             log.debug('Create/update package using dict: %s' % package_dict)
