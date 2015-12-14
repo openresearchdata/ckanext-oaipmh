@@ -30,6 +30,7 @@ for more see http://www.openarchives.org/Register/BrowseSites
 - select **Source type** `OAI-PMH`
 - if your OAI-PMH needs credentials, add the following to the "Configuration" section: `{"username": "foo", "password": "bar" } `
 - if you only want to harvest a specific set, add the following to the "Configuration" section: `{"set": "baz"} `
+- if you want to harvest data in a specific metadata format, add the following to the "Configuration" section: `{"metadata_prefix": "oai_dc"}` (currently `oai_dc` and `oai_ddi` are supported)
 - Save
 - on the harvest admin click **Reharvest**
 
