@@ -66,7 +66,8 @@ class OaipmhHarvester(HarvesterBase):
             client = oaipmh.client.Client(
                 harvest_job.source.url,
                 registry,
-                self.credentials
+                self.credentials,
+                force_http_get=self.force_http_get
             )
 
             client.identify()  # check if identify works
@@ -149,6 +150,11 @@ class OaipmhHarvester(HarvesterBase):
             except (IndexError, KeyError):
                 pass
 
+            try:
+                self.force_http_get = config_json['force_http_get']
+            except (IndexError, KeyError):
+                self.force_http_get = False
+
         except ValueError:
             pass
 
@@ -173,7 +179,8 @@ class OaipmhHarvester(HarvesterBase):
             client = oaipmh.client.Client(
                 harvest_object.job.source.url,
                 registry,
-                self.credentials
+                self.credentials,
+                force_http_get=self.force_http_get
             )
             record = None
             try:
