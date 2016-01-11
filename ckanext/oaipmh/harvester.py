@@ -25,14 +25,6 @@ class OaipmhHarvester(HarvesterBase):
     OAI-PMH Harvester
     '''
 
-    credentials = None
-    md_format = 'oai_dc'
-    set_spec = None
-
-    config = {
-        'user': 'harvest'
-    }
-
     def info(self):
         '''
         Return information about this harvester.
@@ -138,22 +130,12 @@ class OaipmhHarvester(HarvesterBase):
                 password = config_json['password']
                 self.credentials = (username, password)
             except (IndexError, KeyError):
-                pass
+                self.credentials = None
 
-            try:
-                self.set_spec = config_json['set']
-            except (IndexError, KeyError):
-                pass
-
-            try:
-                self.md_format = config_json['metadata_prefix']
-            except (IndexError, KeyError):
-                pass
-
-            try:
-                self.force_http_get = config_json['force_http_get']
-            except (IndexError, KeyError):
-                self.force_http_get = False
+            self.user = 'harvest'
+            self.set_spec = config_json.get('set', None)
+            self.md_format = config_json.get('metadata_prefix', 'oai_dc')
+            self.force_http_get = config_json.get('force_http_get', False)
 
         except ValueError:
             pass
@@ -268,10 +250,11 @@ class OaipmhHarvester(HarvesterBase):
             return False
 
         try:
+            self._set_config(harvest_object.job.source.config)
             context = {
                 'model': model,
                 'session': Session,
-                'user': self.config['user']
+                'user': self.user
             }
 
             package_dict = {}
