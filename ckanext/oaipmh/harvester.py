@@ -1,5 +1,6 @@
 import logging
 import json
+import urllib2
 
 from ckan.model import Session
 from ckan.logic import get_action
@@ -76,13 +77,31 @@ class OaipmhHarvester(HarvesterBase):
                 )
                 harvest_obj.save()
                 harvest_obj_ids.append(harvest_obj.id)
-        except:
+        except urllib2.HTTPError, e:
             log.exception(
-                'Gather stage failed %s' %
-                harvest_job.source.url
+                'Gather stage failed on %s (%s): %s, %s'
+                % (
+                    harvest_job.source.url,
+                    e.fp.read(),
+                    e.reason,
+                    e.hdrs
+                )
             )
             self._save_gather_error(
-                'Could not gather anything from %s!' %
+                'Could not gather anything from %s' %
+                harvest_job.source.url, harvest_job
+            )
+            return None
+        except Exception, e:
+            log.exception(
+                'Gather stage failed on %s: %s'
+                % (
+                    harvest_job.source.url,
+                    str(e),
+                )
+            )
+            self._save_gather_error(
+                'Could not gather anything from %s' %
                 harvest_job.source.url, harvest_job
             )
             return None
