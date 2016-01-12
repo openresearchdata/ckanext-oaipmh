@@ -1,5 +1,6 @@
 import logging
 import json
+import urllib2
 
 from ckan.model import Session
 from ckan.logic import get_action
@@ -23,14 +24,6 @@ class OaipmhHarvester(HarvesterBase):
     '''
     OAI-PMH Harvester
     '''
-
-    credentials = None
-    md_format = 'oai_dc'
-    set_spec = None
-
-    config = {
-        'user': 'harvest'
-    }
 
     def info(self):
         '''
@@ -65,7 +58,8 @@ class OaipmhHarvester(HarvesterBase):
             client = oaipmh.client.Client(
                 harvest_job.source.url,
                 registry,
-                self.credentials
+                self.credentials,
+                force_http_get=self.force_http_get
             )
 
             client.identify()  # check if identify works
@@ -76,13 +70,31 @@ class OaipmhHarvester(HarvesterBase):
                 )
                 harvest_obj.save()
                 harvest_obj_ids.append(harvest_obj.id)
-        except:
+        except urllib2.HTTPError, e:
             log.exception(
-                'Gather stage failed %s' %
-                harvest_job.source.url
+                'Gather stage failed on %s (%s): %s, %s'
+                % (
+                    harvest_job.source.url,
+                    e.fp.read(),
+                    e.reason,
+                    e.hdrs
+                )
             )
             self._save_gather_error(
-                'Could not gather anything from %s!' %
+                'Could not gather anything from %s' %
+                harvest_job.source.url, harvest_job
+            )
+            return None
+        except Exception, e:
+            log.exception(
+                'Gather stage failed on %s: %s'
+                % (
+                    harvest_job.source.url,
+                    str(e),
+                )
+            )
+            self._save_gather_error(
+                'Could not gather anything from %s' %
                 harvest_job.source.url, harvest_job
             )
             return None
@@ -118,17 +130,12 @@ class OaipmhHarvester(HarvesterBase):
                 password = config_json['password']
                 self.credentials = (username, password)
             except (IndexError, KeyError):
-                pass
+                self.credentials = None
 
-            try:
-                self.set_spec = config_json['set']
-            except (IndexError, KeyError):
-                pass
-
-            try:
-                self.md_format = config_json['metadata_prefix']
-            except (IndexError, KeyError):
-                pass
+            self.user = 'harvest'
+            self.set_spec = config_json.get('set', None)
+            self.md_format = config_json.get('metadata_prefix', 'oai_dc')
+            self.force_http_get = config_json.get('force_http_get', False)
 
         except ValueError:
             pass
@@ -154,7 +161,8 @@ class OaipmhHarvester(HarvesterBase):
             client = oaipmh.client.Client(
                 harvest_object.job.source.url,
                 registry,
-                self.credentials
+                self.credentials,
+                force_http_get=self.force_http_get
             )
             record = None
             try:
@@ -242,10 +250,11 @@ class OaipmhHarvester(HarvesterBase):
             return False
 
         try:
+            self._set_config(harvest_object.job.source.config)
             context = {
                 'model': model,
                 'session': Session,
-                'user': self.config['user']
+                'user': self.user
             }
 
             package_dict = {}
