@@ -101,7 +101,10 @@ class OaipmhHarvester(HarvesterBase):
                 harvest_job
             )
             return None
-        log.debug("Gather stage successfully finished with %s harvest objects" % len(harvest_obj_ids))
+        log.debug(
+            "Gather stage successfully finished with %s harvest objects"
+            % len(harvest_obj_ids)
+        )
         return harvest_obj_ids
 
     def _identifier_generator(self, client):
@@ -184,7 +187,10 @@ class OaipmhHarvester(HarvesterBase):
                 log.debug('record found!')
             except:
                 log.exception('getRecord failed for %s' % harvest_object.guid)
-                self._save_object_error('Get record failed for %s!' % harvest_object.guid, harvest_object)
+                self._save_object_error(
+                    'Get record failed for %s!' % harvest_object.guid,
+                    harvest_object
+                )
                 return False
 
             header, metadata, _ = record
