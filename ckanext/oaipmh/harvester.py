@@ -1,6 +1,7 @@
 import logging
 import json
 import urllib2
+import traceback
 
 from ckan.model import Session
 from ckan.logic import get_action
@@ -70,6 +71,7 @@ class OaipmhHarvester(HarvesterBase):
                 )
                 harvest_obj.save()
                 harvest_obj_ids.append(harvest_obj.id)
+                log.debug("Harvest obj %s created" % harvest_obj.id)
         except urllib2.HTTPError, e:
             log.exception(
                 'Gather stage failed on %s (%s): %s, %s'
@@ -94,10 +96,12 @@ class OaipmhHarvester(HarvesterBase):
                 )
             )
             self._save_gather_error(
-                'Could not gather anything from %s' %
-                harvest_job.source.url, harvest_job
+                'Could not gather anything from %s: %s / %s'
+                % (harvest_job.source.url, str(e), traceback.format_exc()),
+                harvest_job
             )
             return None
+        log.debug("Gather stage successfully finished with %s harvest objects" % len(harvest_obj_ids))
         return harvest_obj_ids
 
     def _identifier_generator(self, client):
@@ -179,8 +183,8 @@ class OaipmhHarvester(HarvesterBase):
                 self._after_record_fetch(record)
                 log.debug('record found!')
             except:
-                log.exception('getRecord failed')
-                self._save_object_error('Get record failed!', harvest_object)
+                log.exception('getRecord failed for %s' % harvest_object.guid)
+                self._save_object_error('Get record failed for %s!' % harvest_object.guid, harvest_object)
                 return False
 
             header, metadata, _ = record
@@ -209,10 +213,13 @@ class OaipmhHarvester(HarvesterBase):
 
             harvest_object.content = content
             harvest_object.save()
-        except:
-            log.exception('Something went wrong!')
+        except Exception, e:
+            log.exception(e)
             self._save_object_error(
-                'Exception in fetch stage',
+                (
+                    'Exception in fetch stage for %s: %r / %s'
+                    % (harvest_object.guid, e, traceback.format_exc())
+                ),
                 harvest_object
             )
             return False
@@ -331,10 +338,13 @@ class OaipmhHarvester(HarvesterBase):
             Session.commit()
 
             log.debug("Finished record")
-        except:
-            log.exception('Something went wrong!')
+        except Exception, e:
+            log.exception(e)
             self._save_object_error(
-                'Exception in import stage',
+                (
+                    'Exception in fetch stage for %s: %r / %s'
+                    % (harvest_object.guid, e, traceback.format_exc())
+                ),
                 harvest_object
             )
             return False
