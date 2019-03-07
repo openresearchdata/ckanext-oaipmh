@@ -261,7 +261,8 @@ class OaipmhHarvester(HarvesterBase):
             context = {
                 'model': model,
                 'session': Session,
-                'user': self.user
+                'user': self.user,
+                'ignore_auth': True,
             }
 
             package_dict = {}
@@ -284,7 +285,7 @@ class OaipmhHarvester(HarvesterBase):
 
             # add owner_org
             source_dataset = get_action('package_show')(
-              context,
+              context.copy(),
               {'id': harvest_object.source.id}
             )
             owner_org = source_dataset.get('owner_org')
@@ -312,13 +313,13 @@ class OaipmhHarvester(HarvesterBase):
                 groups.extend(
                     self._find_or_create_groups(
                         content['set_spec'],
-                        context
+                        context.copy()
                     )
                 )
 
             # add groups from content
             groups.extend(
-                self._extract_groups(content, context)
+                self._extract_groups(content, context.copy())
             )
 
             package_dict['groups'] = groups
@@ -436,10 +437,10 @@ class OaipmhHarvester(HarvesterBase):
                 'title': group_name
             }
             try:
-                group = get_action('group_show')(context, data_dict)
+                group = get_action('group_show')(context.copy(), data_dict)
                 log.info('found the group ' + group['id'])
             except:
-                group = get_action('group_create')(context, data_dict)
+                group = get_action('group_create')(context.copy(), data_dict)
                 log.info('created the group ' + group['id'])
             group_ids.append(group['id'])
 
