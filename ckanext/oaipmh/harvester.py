@@ -382,6 +382,16 @@ class OaipmhHarvester(HarvesterBase):
                 value = value[0]
             if not value:
                 value = None
+            if key.endswith('date') and value:
+                # the ckan indexer can't handle timezone-aware datetime objects
+                try:
+                    from dateutil.parser import parse
+                    date_value = parse(value)
+                    date_without_tz = date_value.replace(tzinfo=None)
+                    value = date_without_tz.isoformat()
+                except (ValueError, TypeError):
+                    continue
+
             extras.append((key, value))
 
         tags = [munge_tag(tag[:100]) for tag in tags]
