@@ -15,7 +15,7 @@ setup(
     url='http://www.liip.ch',
     license='AGPL',
     packages=find_packages(exclude=['ez_setup', 'examples', 'tests']),
-    namespace_packages=['ckanext', 'ckanext.oaipmh'],
+    namespace_packages=['ckanext'],
     include_package_data=True,
     zip_safe=False,
     install_requires=[
@@ -25,7 +25,5 @@ setup(
     """
     [ckan.plugins]
     oaipmh_harvester=ckanext.oaipmh.harvester:OaipmhHarvester
-    [paste.paster_command]
-    harvester=ckanext.oaipmh.command:OaipmhHarvesterCommand
     """,
 )
