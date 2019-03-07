@@ -30,8 +30,8 @@ class OaipmhHarvester(HarvesterBase):
         Return information about this harvester.
         '''
         return {
-            'name': 'OAI-PMH',
-            'title': 'OAI-PMH',
+            'name': 'oai_pmh',
+            'title': 'OAI-PMH Harvester',
             'description': 'Harvester for OAI-PMH data sources'
         }
 
